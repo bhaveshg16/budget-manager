@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { seedDefaultCategoriesIfEmpty } from './data/categories'
@@ -7,7 +7,9 @@ import { catchUpRecurringTransactions } from './data/recurring'
 import { syncAll } from './sync/syncEngine'
 import { todayDateString } from './utils/date'
 import { SyncStatus } from './components/SyncStatus'
+import { BottomNav } from './components/BottomNav'
 import { HomeScreen } from './screens/HomeScreen'
+import { CalendarScreen } from './screens/CalendarScreen'
 import { AddEditEntryScreen } from './screens/AddEditEntryScreen'
 import { AnalyticsScreen } from './screens/AnalyticsScreen'
 import { CategoriesBudgetsScreen } from './screens/CategoriesBudgetsScreen'
@@ -35,24 +37,21 @@ function App() {
   if (!session) return <SignInScreen />
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <header className="flex items-center justify-between p-4 border-b">
-        <nav className="flex gap-4 text-sm font-medium">
-          <Link to="/">Home</Link>
-          <Link to="/analytics">Analytics</Link>
-          <Link to="/categories">Categories</Link>
-        </nav>
+    <div className="min-h-screen bg-bg text-text">
+      <header className="flex items-center justify-end p-3">
         <SyncStatus syncing={syncing} />
       </header>
-      <main className="p-4 max-w-lg mx-auto">
+      <main className="mx-auto max-w-lg px-4 pb-24">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
+          <Route path="/calendar" element={<CalendarScreen />} />
           <Route path="/entry/new" element={<AddEditEntryScreen />} />
           <Route path="/entry/:id" element={<AddEditEntryScreen />} />
           <Route path="/analytics" element={<AnalyticsScreen />} />
           <Route path="/categories" element={<CategoriesBudgetsScreen />} />
         </Routes>
       </main>
+      <BottomNav />
     </div>
   )
 }
