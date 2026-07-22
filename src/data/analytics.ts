@@ -1,6 +1,7 @@
 import { db } from './db'
 import { listTransactionsForMonth } from './transactions'
 import { listBudgetsForMonth } from './budgets'
+import { yearMonths } from '../utils/date'
 
 export interface CategoryTotal {
   categoryId: string
@@ -84,4 +85,24 @@ export async function getMonthComparison(monthA: string, monthB: string): Promis
       amountA, amountB, delta: amountB - amountA,
     }
   })
+}
+
+export async function spendByDayForMonth(month: string): Promise<Map<string, number>> {
+  const transactions = await listTransactionsForMonth(month)
+  const map = new Map<string, number>()
+  for (const t of transactions) {
+    if (t.type !== 'expense') continue
+    map.set(t.date, (map.get(t.date) ?? 0) + t.amount)
+  }
+  return map
+}
+
+export async function spendByMonthForYear(year: number): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  for (const month of yearMonths(year)) {
+    const transactions = await listTransactionsForMonth(month)
+    const total = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+    if (total > 0) map.set(month, total)
+  }
+  return map
 }

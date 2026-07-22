@@ -30,3 +30,7 @@ export async function deleteTransaction(id: string): Promise<void> {
 export async function listTransactionsForMonth(month: string): Promise<Transaction[]> {
   return db.transactions.where('date').startsWith(month).toArray()
 }
+
+export async function listTransactionsForDate(date: string): Promise<Transaction[]> {
+  return db.transactions.where('date').equals(date).toArray()
+}

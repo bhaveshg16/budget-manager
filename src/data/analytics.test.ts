@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './db'
 import { createCategory } from './categories'
-import { createTransaction } from './transactions'
+import { createTransaction, listTransactionsForDate } from './transactions'
 import { setBudgetLimit } from './budgets'
-import { getCategoryBreakdown, getMonthlyTrend, getBudgetVsActual, getMonthComparison } from './analytics'
+import { getCategoryBreakdown, getMonthlyTrend, getBudgetVsActual, getMonthComparison, spendByDayForMonth, spendByMonthForYear } from './analytics'
 
 describe('analytics', () => {
   beforeEach(async () => {
@@ -82,5 +82,41 @@ describe('analytics', () => {
     const result = await getBudgetVsActual('2026-07')
     expect(result).toHaveLength(1)
     expect(result.some((row) => row.categoryId === rent.id)).toBe(false)
+  })
+})
+
+describe('calendar aggregations', () => {
+  beforeEach(async () => {
+    await db.transactions.clear()
+  })
+
+  it('spendByDayForMonth sums expenses per day and excludes income', async () => {
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 100, description: '', date: '2026-07-09', time: '10:00' })
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 50, description: '', date: '2026-07-09', time: '11:00' })
+    await createTransaction({ type: 'income', categoryId: 'c2', amount: 9999, description: '', date: '2026-07-09', time: '12:00' })
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 200, description: '', date: '2026-08-01', time: '10:00' })
+
+    const map = await spendByDayForMonth('2026-07')
+    expect(map.get('2026-07-09')).toBe(150)
+    expect(map.has('2026-08-01')).toBe(false)
+  })
+
+  it('spendByMonthForYear sums expenses per month, expenses only', async () => {
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 300, description: '', date: '2026-03-15', time: '10:00' })
+    await createTransaction({ type: 'income', categoryId: 'c2', amount: 5000, description: '', date: '2026-03-16', time: '10:00' })
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 700, description: '', date: '2026-07-01', time: '10:00' })
+
+    const map = await spendByMonthForYear(2026)
+    expect(map.get('2026-03')).toBe(300)
+    expect(map.get('2026-07')).toBe(700)
+    expect(map.has('2026-01')).toBe(false)
+  })
+
+  it('listTransactionsForDate returns only that date', async () => {
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 10, description: '', date: '2026-07-09', time: '10:00' })
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 20, description: '', date: '2026-07-10', time: '10:00' })
+    const rows = await listTransactionsForDate('2026-07-09')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].amount).toBe(10)
   })
 })
