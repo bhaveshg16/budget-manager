@@ -40,3 +40,20 @@ describe('CalendarScreen day view', () => {
     await waitFor(() => expect(screen.getByTestId('calendar-title').textContent).not.toBe(initial))
   })
 })
+
+describe('CalendarScreen year view', () => {
+  beforeEach(async () => {
+    await db.transactions.clear()
+    await db.categories.clear()
+  })
+
+  it('zooms out to a 12-month grid when the title is tapped, then back in', async () => {
+    renderCalendar()
+    await userEvent.click(await screen.findByTestId('calendar-title'))
+    await waitFor(() => expect(screen.getByTestId('year-title')).toBeInTheDocument())
+    expect(screen.getByTestId('month-01')).toBeInTheDocument()
+    expect(screen.getByTestId('month-12')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('month-03'))
+    await waitFor(() => expect(screen.getByTestId('calendar-title')).toBeInTheDocument())
+  })
+})
