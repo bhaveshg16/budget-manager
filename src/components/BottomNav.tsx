@@ -5,7 +5,7 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
 
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex items-center border-t border-border bg-surface">
+    <nav className="fixed inset-x-0 bottom-0 z-10 flex items-center border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
       <NavLink to="/" end className={tabClass} aria-label="Home">
         <span aria-hidden>🏠</span>Home
       </NavLink>

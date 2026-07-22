@@ -82,7 +82,7 @@ export function CalendarScreen() {
           const spent = dayTotals.get(date) ?? 0
           const level = heatLevel(spent, max)
           return (
-            <button key={i} data-testid={`day-${date}`} aria-label={`${date}, spent ₹${spent}`} onClick={() => setSelectedDay(date)}
+            <button key={i} data-testid={`day-${date}`} aria-label={`${date}, spent ₹${spent.toFixed(0)}`} onClick={() => setSelectedDay(date)}
               className={`flex aspect-square flex-col items-center justify-center rounded-lg border border-border text-xs ${HEAT_BG[level]}`}>
               <span className="text-text">{dayOfMonth(date)}</span>
               {spent > 0 && <span className="text-[10px] text-muted">{spent.toFixed(0)}</span>}

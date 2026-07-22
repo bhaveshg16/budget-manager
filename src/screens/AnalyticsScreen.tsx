@@ -46,7 +46,7 @@ export function AnalyticsScreen() {
         <h2 className="font-semibold mb-2 text-text">Trend (last 6 months)</h2>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={trend}>
-            <XAxis dataKey="month" /><YAxis /><Tooltip />
+            <XAxis dataKey="month" tick={{ fill: 'var(--color-muted)' }} /><YAxis tick={{ fill: 'var(--color-muted)' }} /><Tooltip />
             <Line type="monotone" dataKey="expenseTotal" stroke="#ef4444" name="Expenses" />
             <Line type="monotone" dataKey="incomeTotal" stroke="var(--color-accent)" name="Income" />
           </LineChart>
@@ -75,7 +75,7 @@ export function AnalyticsScreen() {
         <h2 className="font-semibold mb-2 text-text">This month vs last month</h2>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={comparison}>
-            <XAxis dataKey="categoryName" /><YAxis /><Tooltip />
+            <XAxis dataKey="categoryName" tick={{ fill: 'var(--color-muted)' }} /><YAxis tick={{ fill: 'var(--color-muted)' }} /><Tooltip />
             <Bar dataKey="amountA" fill="#94a3b8" name="Last month" />
             <Bar dataKey="amountB" fill="var(--color-accent)" name="This month" />
           </BarChart>
