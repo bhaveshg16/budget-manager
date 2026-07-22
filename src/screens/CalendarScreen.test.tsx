@@ -41,6 +41,23 @@ describe('CalendarScreen day view', () => {
   })
 })
 
+describe('CalendarScreen day sheet', () => {
+  beforeEach(async () => {
+    await db.transactions.clear()
+    await db.categories.clear()
+  })
+
+  it('opens the day sheet on cell tap and closes it on Escape', async () => {
+    const month = currentMonthString()
+    await createTransaction({ type: 'expense', categoryId: 'c1', amount: 250, description: 'Snacks', date: `${month}-15`, time: '12:00' })
+    renderCalendar()
+    await userEvent.click(await screen.findByTestId(`day-${month}-15`))
+    expect(await screen.findByRole('button', { name: /add to this day/i })).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('button', { name: /add to this day/i })).not.toBeInTheDocument())
+  })
+})
+
 describe('CalendarScreen year view', () => {
   beforeEach(async () => {
     await db.transactions.clear()

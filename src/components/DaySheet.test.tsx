@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { DaySheet } from './DaySheet'
 import { db } from '../data/db'
@@ -18,4 +19,22 @@ describe('DaySheet', () => {
     expect(screen.getByText(/2026-07-09/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add to this day/i })).toBeInTheDocument()
   })
+
+  it('navigates to add-entry pre-dated to this day', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<DaySheet date="2026-07-09" onClose={() => {}} />} />
+          <Route path="/entry/new" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /add to this day/i }))
+    await waitFor(() => expect(screen.getByTestId('loc')).toHaveTextContent('/entry/new?date=2026-07-09'))
+  })
 })
+
+function LocationProbe() {
+  const loc = useLocation()
+  return <div data-testid="loc">{loc.pathname}{loc.search}</div>
+}
