@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Link } from 'react-router-dom'
 import { db } from '../data/db'
 import { currentMonthString } from '../utils/date'
 
@@ -36,11 +37,13 @@ export function HomeScreen() {
 
       <ul className="flex flex-col gap-2">
         {transactions.map((t) => (
-          <li key={t.id} className="flex justify-between rounded-lg border border-border p-3">
-            <span>{t.description || categoryName(t.categoryId)}</span>
-            <span className={t.type === 'expense' ? 'text-red-500' : 'text-accent'}>
-              {t.type === 'expense' ? '-' : '+'}₹{t.amount.toFixed(0)}
-            </span>
+          <li key={t.id}>
+            <Link to={`/entry/${t.id}`} className="flex justify-between rounded-lg border border-border p-3">
+              <span>{t.description || categoryName(t.categoryId)}</span>
+              <span className={t.type === 'expense' ? 'text-red-500' : 'text-accent'}>
+                {t.type === 'expense' ? '-' : '+'}₹{t.amount.toFixed(0)}
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
