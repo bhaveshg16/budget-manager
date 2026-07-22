@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { spendByDayForMonth, spendByMonthForYear } from '../data/analytics'
 import { monthGridDays, monthLabel, addMonths, dayOfMonth, currentMonthString, yearMonths } from '../utils/date'
 import { heatLevel } from '../utils/heat'
+import { DaySheet } from '../components/DaySheet'
 
 const HEAT_BG = ['bg-transparent', 'bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4', 'bg-heat-5']
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -10,6 +11,7 @@ const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 export function CalendarScreen() {
   const [month, setMonth] = useState(currentMonthString())
   const [view, setView] = useState<'month' | 'year'>('month')
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const year = Number(month.slice(0, 4))
   const dayTotals = useLiveQuery(() => spendByDayForMonth(month), [month])
   const monthTotals = useLiveQuery(() => spendByMonthForYear(year), [year])
@@ -80,14 +82,16 @@ export function CalendarScreen() {
           const spent = dayTotals.get(date) ?? 0
           const level = heatLevel(spent, max)
           return (
-            <div key={i} data-testid={`day-${date}`}
+            <button key={i} data-testid={`day-${date}`} onClick={() => setSelectedDay(date)}
               className={`flex aspect-square flex-col items-center justify-center rounded-lg border border-border text-xs ${HEAT_BG[level]}`}>
               <span className="text-text">{dayOfMonth(date)}</span>
               {spent > 0 && <span className="text-[10px] text-muted">{spent.toFixed(0)}</span>}
-            </div>
+            </button>
           )
         })}
       </div>
+
+      {selectedDay && <DaySheet date={selectedDay} onClose={() => setSelectedDay(null)} />}
     </div>
   )
 }

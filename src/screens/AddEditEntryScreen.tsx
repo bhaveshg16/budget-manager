@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { createTransaction } from '../data/transactions'
@@ -15,7 +15,8 @@ export function AddEditEntryScreen() {
   const [categoryId, setCategoryId] = useState('')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
-  const [date, setDate] = useState(todayDateString())
+  const [searchParams] = useSearchParams()
+  const [date, setDate] = useState(searchParams.get('date') ?? todayDateString())
   const [time, setTime] = useState(nowTimeString())
   const [makeRecurring, setMakeRecurring] = useState(false)
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly')

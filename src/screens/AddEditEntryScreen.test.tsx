@@ -42,4 +42,11 @@ describe('AddEditEntryScreen', () => {
     expect(saved[0].type).toBe('income')
     expect(saved[0].categoryId).toBe(salary.id)
   })
+
+  it('prefills the date from the query string', async () => {
+    render(<MemoryRouter initialEntries={['/entry/new?date=2026-07-09']}><AddEditEntryScreen /></MemoryRouter>)
+
+    const dateInput = (await screen.findByLabelText(/date/i)) as HTMLInputElement
+    expect(dateInput.value).toBe('2026-07-09')
+  })
 })
