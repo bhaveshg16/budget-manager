@@ -28,7 +28,7 @@ export function CategoriesBudgetsScreen() {
               const value = Number(e.target.value)
               if (!Number.isNaN(value) && value >= 0) setBudgetLimit(c.id, month, value)
             }}
-            className="border rounded-lg p-2 w-28"
+            className="border border-border bg-surface rounded-lg p-2 w-28"
           />
         </div>
       ))}

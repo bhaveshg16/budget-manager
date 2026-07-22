@@ -30,8 +30,8 @@ export function AnalyticsScreen() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section>
-        <h2 className="font-semibold mb-2">Spending by category</h2>
+      <section className="bg-surface border border-border rounded-2xl p-3">
+        <h2 className="font-semibold mb-2 text-text">Spending by category</h2>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie data={breakdown} dataKey="total" nameKey="categoryName" outerRadius={80}>
@@ -42,25 +42,25 @@ export function AnalyticsScreen() {
         </ResponsiveContainer>
       </section>
 
-      <section>
-        <h2 className="font-semibold mb-2">Trend (last 6 months)</h2>
+      <section className="bg-surface border border-border rounded-2xl p-3">
+        <h2 className="font-semibold mb-2 text-text">Trend (last 6 months)</h2>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={trend}>
-            <XAxis dataKey="month" /><YAxis /><Tooltip />
+            <XAxis dataKey="month" tick={{ fill: 'var(--color-muted)' }} /><YAxis tick={{ fill: 'var(--color-muted)' }} /><Tooltip />
             <Line type="monotone" dataKey="expenseTotal" stroke="#ef4444" name="Expenses" />
-            <Line type="monotone" dataKey="incomeTotal" stroke="#059669" name="Income" />
+            <Line type="monotone" dataKey="incomeTotal" stroke="var(--color-accent)" name="Income" />
           </LineChart>
         </ResponsiveContainer>
       </section>
 
-      <section>
-        <h2 className="font-semibold mb-2">Budget vs actual</h2>
+      <section className="bg-surface border border-border rounded-2xl p-3">
+        <h2 className="font-semibold mb-2 text-text">Budget vs actual</h2>
         <ul className="flex flex-col gap-2">
           {budgetVsActual.map((row) => (
             <li key={row.categoryId}>
               <div className="flex justify-between text-sm"><span>{row.categoryName}</span><span>₹{row.spent} / ₹{row.limitAmount}</span></div>
-              <div className="h-2 rounded bg-slate-100">
-                <div className="h-2 rounded bg-teal-600" style={{ width: `${
+              <div className="h-2 rounded bg-border">
+                <div className="h-2 rounded bg-accent" style={{ width: `${
                   row.limitAmount > 0
                     ? Math.min(100, (row.spent / row.limitAmount) * 100)
                     : row.spent > 0 ? 100 : 0
@@ -71,13 +71,13 @@ export function AnalyticsScreen() {
         </ul>
       </section>
 
-      <section>
-        <h2 className="font-semibold mb-2">This month vs last month</h2>
+      <section className="bg-surface border border-border rounded-2xl p-3">
+        <h2 className="font-semibold mb-2 text-text">This month vs last month</h2>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={comparison}>
-            <XAxis dataKey="categoryName" /><YAxis /><Tooltip />
+            <XAxis dataKey="categoryName" tick={{ fill: 'var(--color-muted)' }} /><YAxis tick={{ fill: 'var(--color-muted)' }} /><Tooltip />
             <Bar dataKey="amountA" fill="#94a3b8" name="Last month" />
-            <Bar dataKey="amountB" fill="#0f766e" name="This month" />
+            <Bar dataKey="amountB" fill="var(--color-accent)" name="This month" />
           </BarChart>
         </ResponsiveContainer>
       </section>

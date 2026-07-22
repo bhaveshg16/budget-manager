@@ -46,10 +46,10 @@ export function SignInScreen() {
         <label htmlFor="code">Code</label>
         <input id="code" type="text" inputMode="numeric" required
           autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)}
-          className="border rounded-lg p-2" />
-        <button type="submit" disabled={submitting} className="rounded-lg bg-teal-700 text-white p-2">Verify</button>
-        <button type="button" onClick={handleBack} className="text-sm text-teal-700 underline">Wrong email? Go back</button>
-        {error && <p className="text-red-600">{error}</p>}
+          className="border border-border bg-surface rounded-lg p-2" />
+        <button type="submit" disabled={submitting} className="rounded-lg bg-accent text-white p-2">Verify</button>
+        <button type="button" onClick={handleBack} className="text-sm text-accent underline">Wrong email? Go back</button>
+        {error && <p className="text-red-500">{error}</p>}
       </form>
     )
   }
@@ -58,9 +58,9 @@ export function SignInScreen() {
     <form onSubmit={handleSendCode} className="flex flex-col gap-3 p-6 max-w-sm mx-auto">
       <label htmlFor="email">Email</label>
       <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-        className="border rounded-lg p-2" />
-      <button type="submit" disabled={submitting} className="rounded-lg bg-teal-700 text-white p-2">Send code</button>
-      {error && <p className="text-red-600">{error}</p>}
+        className="border border-border bg-surface rounded-lg p-2" />
+      <button type="submit" disabled={submitting} className="rounded-lg bg-accent text-white p-2">Send code</button>
+      {error && <p className="text-red-500">{error}</p>}
     </form>
   )
 }
