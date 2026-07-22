@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     if (navigator.onLine) {
       try {
-        await syncAll()
+        await Promise.race([syncAll(), new Promise((resolve) => setTimeout(resolve, 3000))])
       } catch {
         // Best-effort: a failed final sync must not block sign-out.
       }

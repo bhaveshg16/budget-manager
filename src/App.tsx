@@ -18,20 +18,22 @@ import { CategoriesBudgetsScreen } from './screens/CategoriesBudgetsScreen'
 function App() {
   const { session, loading, signOut } = useAuth()
   const [syncing, setSyncing] = useState(false)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     const userId = session?.user.id
     if (!userId) return
+    setReady(false)
     setSyncing(true)
     resetLocalDataForUser(userId)
+      .then(() => setReady(true)) // local data is now correct for this user; safe to render screens
       .then(() => syncAll()) // pull server state first, before any seeding
       .then(() => seedDefaultCategoriesIfEmpty()) // only seeds a genuinely new user (empty after pull)
       .then(() => catchUpRecurringTransactions(todayDateString()))
       .then(() => syncAll()) // push seeded defaults / caught-up recurring rows
+      .catch((e) => console.error('startup sync failed', e)) // Fix 2: avoid unhandled rejection on offline/failed startup
       .finally(() => setSyncing(false))
-    // Depend on the user id, not the whole session object: Supabase's onAuthStateChange fires
-    // TOKEN_REFRESHED roughly hourly with a new session object for the same user, and re-running
-    // this on every refresh would be redundant work with no user action behind it.
+    // Depend on the user id, not the whole session object (TOKEN_REFRESHED reuses the same id). Keep this comment.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id])
 
@@ -42,6 +44,7 @@ function App() {
 
   if (loading) return null
   if (!session) return <SignInScreen />
+  if (!ready) return null
 
   return (
     <div className="min-h-screen bg-bg text-text">

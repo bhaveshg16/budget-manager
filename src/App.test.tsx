@@ -10,12 +10,14 @@ vi.mock('./auth/AuthProvider', () => ({
   useAuth: () => mockUseAuth(),
 }))
 
+const { resetMock } = vi.hoisted(() => ({ resetMock: vi.fn().mockResolvedValue(false) }))
+
 // The signed-in path fires reset/seeding/catch-up/sync side effects in a useEffect;
 // stub them so the App test stays isolated from Dexie and the network.
 vi.mock('./data/categories', () => ({ seedDefaultCategoriesIfEmpty: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('./data/recurring', () => ({ catchUpRecurringTransactions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('./sync/syncEngine', () => ({ syncAll: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('./data/localReset', () => ({ resetLocalDataForUser: vi.fn().mockResolvedValue(false) }))
+vi.mock('./data/localReset', () => ({ resetLocalDataForUser: resetMock }))
 
 const signedInSession = { session: { user: { id: 'u1', email: 'me@example.com' } }, loading: false, signOut: mockSignOut }
 
@@ -26,10 +28,10 @@ describe('App', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
   })
 
-  it('renders the bottom tab bar when signed in', () => {
+  it('renders the bottom tab bar when signed in', async () => {
     mockUseAuth.mockReturnValue(signedInSession)
     render(<BrowserRouter><App /></BrowserRouter>)
-    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /home/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /analytics/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /categories/i })).toBeInTheDocument()
@@ -41,8 +43,22 @@ describe('App', () => {
     mockSignOut.mockClear()
     mockUseAuth.mockReturnValue(signedInSession)
     render(<BrowserRouter><App /></BrowserRouter>)
-    expect(screen.getByText('me@example.com')).toBeInTheDocument()
+    expect(await screen.findByText('me@example.com')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /sign out/i }))
     expect(mockSignOut).toHaveBeenCalledOnce()
+  })
+
+  it('does not render account screens until the local reset resolves', async () => {
+    let resolveReset!: () => void
+    resetMock.mockImplementationOnce(
+      () => new Promise<boolean>((res) => { resolveReset = () => res(false) }),
+    )
+    mockUseAuth.mockReturnValue(signedInSession)
+    render(<BrowserRouter><App /></BrowserRouter>)
+    // before reset resolves: authenticated content absent
+    expect(screen.queryByText('me@example.com')).not.toBeInTheDocument()
+    resolveReset()
+    // after: it appears
+    expect(await screen.findByText('me@example.com')).toBeInTheDocument()
   })
 })
