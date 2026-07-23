@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../data/db'
 import { listTransactionsForDate } from '../data/transactions'
 
@@ -28,11 +28,13 @@ export function DaySheet({ date, onClose }: { date: string; onClose: () => void 
         <p className="text-center text-sm text-muted">{date} · ₹{spent.toFixed(0)}</p>
         <ul className="my-3 flex flex-col gap-2">
           {transactions.map((t) => (
-            <li key={t.id} className="flex justify-between rounded-lg border border-border p-3">
-              <span>{t.description || name(t.categoryId)}</span>
-              <span className={t.type === 'expense' ? 'text-red-500' : 'text-accent'}>
-                {t.type === 'expense' ? '-' : '+'}₹{t.amount.toFixed(0)}
-              </span>
+            <li key={t.id}>
+              <Link to={`/entry/${t.id}`} className="flex justify-between rounded-lg border border-border p-3">
+                <span>{t.description || name(t.categoryId)}</span>
+                <span className={t.type === 'expense' ? 'text-red-500' : 'text-accent'}>
+                  {t.type === 'expense' ? '-' : '+'}₹{t.amount.toFixed(0)}
+                </span>
+              </Link>
             </li>
           ))}
           {transactions.length === 0 && <li className="py-4 text-center text-sm text-muted">No entries</li>}

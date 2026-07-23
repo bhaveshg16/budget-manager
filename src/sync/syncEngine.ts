@@ -1,16 +1,9 @@
 import { supabase } from '../lib/supabaseClient'
 import { db } from '../data/db'
 import type { Category, Transaction, Budget, RecurringRule } from '../data/db'
+import { getLastSyncedAt, setLastSyncedAt } from './watermark'
 
-const LAST_SYNCED_KEY = 'budget-manager:lastSyncedAt'
-
-export function getLastSyncedAt(): number {
-  return Number(localStorage.getItem(LAST_SYNCED_KEY) ?? 0)
-}
-
-function setLastSyncedAt(value: number): void {
-  localStorage.setItem(LAST_SYNCED_KEY, String(value))
-}
+export { getLastSyncedAt } from './watermark'
 
 async function currentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getUser()
