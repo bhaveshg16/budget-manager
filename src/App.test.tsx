@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
@@ -10,13 +10,16 @@ vi.mock('./auth/AuthProvider', () => ({
   useAuth: () => mockUseAuth(),
 }))
 
-const { resetMock } = vi.hoisted(() => ({ resetMock: vi.fn().mockResolvedValue(false) }))
+const { resetMock, syncAllMock } = vi.hoisted(() => ({
+  resetMock: vi.fn().mockResolvedValue(false),
+  syncAllMock: vi.fn().mockResolvedValue(undefined),
+}))
 
 // The signed-in path fires reset/seeding/catch-up/sync side effects in a useEffect;
 // stub them so the App test stays isolated from Dexie and the network.
 vi.mock('./data/categories', () => ({ seedDefaultCategoriesIfEmpty: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('./data/recurring', () => ({ catchUpRecurringTransactions: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('./sync/syncEngine', () => ({ syncAll: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('./sync/syncEngine', () => ({ syncAll: syncAllMock }))
 vi.mock('./data/localReset', () => ({ resetLocalDataForUser: resetMock }))
 
 const signedInSession = { session: { user: { id: 'u1', email: 'me@example.com' } }, loading: false, signOut: mockSignOut }
@@ -60,5 +63,20 @@ describe('App', () => {
     resolveReset()
     // after: it appears
     expect(await screen.findByText('me@example.com')).toBeInTheDocument()
+  })
+
+  it('does not start syncing until the local reset has resolved', async () => {
+    syncAllMock.mockClear()
+    let resolveReset!: () => void
+    resetMock.mockImplementationOnce(
+      () => new Promise<boolean>((res) => { resolveReset = () => res(false) }),
+    )
+    mockUseAuth.mockReturnValue(signedInSession)
+    render(<BrowserRouter><App /></BrowserRouter>)
+    // reset is still pending: sync must not have started
+    expect(syncAllMock).not.toHaveBeenCalled()
+    resolveReset()
+    // once reset resolves, sync runs
+    await waitFor(() => expect(syncAllMock).toHaveBeenCalled())
   })
 })

@@ -9,6 +9,10 @@ import type { TransactionType } from '../data/db'
 
 export function AddEditEntryScreen() {
   const navigate = useNavigate()
+  function goBack() {
+    if (typeof window !== 'undefined' && (window.history.state?.idx ?? 0) > 0) navigate(-1)
+    else navigate('/')
+  }
   const { id } = useParams()
   const editMode = Boolean(id)
   const existing = useLiveQuery(() => (id ? db.transactions.get(id) : undefined), [id])
@@ -48,7 +52,7 @@ export function AddEditEntryScreen() {
 
     if (editMode && id) {
       await updateTransaction(id, { type, categoryId: effectiveCategoryId, amount: numericAmount, description, date, time })
-      navigate(-1)
+      goBack()
       return
     }
 
@@ -117,7 +121,7 @@ export function AddEditEntryScreen() {
       )}
 
       {editMode && (
-        <button type="button" onClick={async () => { await deleteTransaction(id!); navigate(-1) }}
+        <button type="button" onClick={async () => { await deleteTransaction(id!); goBack() }}
           className="rounded-lg border border-border p-3 font-medium text-red-500">Delete</button>
       )}
 

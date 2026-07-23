@@ -18,15 +18,14 @@ import { CategoriesBudgetsScreen } from './screens/CategoriesBudgetsScreen'
 function App() {
   const { session, loading, signOut } = useAuth()
   const [syncing, setSyncing] = useState(false)
-  const [ready, setReady] = useState(false)
+  const [readyUserId, setReadyUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const userId = session?.user.id
     if (!userId) return
-    setReady(false)
     setSyncing(true)
     resetLocalDataForUser(userId)
-      .then(() => setReady(true)) // local data is now correct for this user; safe to render screens
+      .then(() => setReadyUserId(userId)) // local data is now correct for this user; safe to render screens
       .then(() => syncAll()) // pull server state first, before any seeding
       .then(() => seedDefaultCategoriesIfEmpty()) // only seeds a genuinely new user (empty after pull)
       .then(() => catchUpRecurringTransactions(todayDateString()))
@@ -44,7 +43,7 @@ function App() {
 
   if (loading) return null
   if (!session) return <SignInScreen />
-  if (!ready) return null
+  if (readyUserId !== session.user.id) return null
 
   return (
     <div className="min-h-screen bg-bg text-text">
