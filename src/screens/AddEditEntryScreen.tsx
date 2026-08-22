@@ -21,7 +21,7 @@ export function AddEditEntryScreen() {
   const [makeRecurring, setMakeRecurring] = useState(false)
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly')
 
-  const filteredCategories = categories?.filter((c) => c.type === type) ?? []
+  const filteredCategories = categories?.filter((c) => c.type === type && !c.deletedAt) ?? []
   const effectiveCategoryId = filteredCategories.some((c) => c.id === categoryId)
     ? categoryId
     : (filteredCategories[0]?.id ?? '')

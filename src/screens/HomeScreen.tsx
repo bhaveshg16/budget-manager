@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
+import { resolveCategoryDisplay } from '../data/categories'
 import { currentMonthString } from '../utils/date'
 
 export function HomeScreen() {
@@ -15,7 +16,7 @@ export function HomeScreen() {
 
   const spent = transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
   const income = transactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)
-  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? 'Unknown'
+  const categoryName = (id: string) => resolveCategoryDisplay(categories, id).name
 
   return (
     <div className="flex flex-col gap-6">

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../data/db'
+import { resolveCategoryDisplay } from '../data/categories'
 import { listTransactionsForDate } from '../data/transactions'
 
 export function DaySheet({ date, onClose }: { date: string; onClose: () => void }) {
@@ -20,7 +21,7 @@ export function DaySheet({ date, onClose }: { date: string; onClose: () => void 
   if (!transactions || !categories) return null
 
   const spent = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-  const name = (id: string) => categories.find((c) => c.id === id)?.name ?? 'Unknown'
+  const name = (id: string) => resolveCategoryDisplay(categories, id).name
 
   return (
     <div role="dialog" aria-modal="true" aria-label={date} className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={onClose}>

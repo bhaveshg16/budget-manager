@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './db'
-import { seedDefaultCategoriesIfEmpty, listCategories, listActiveCategories, createCategory, updateCategory, deleteCategory } from './categories'
+import { seedDefaultCategoriesIfEmpty, listCategories, listActiveCategories, createCategory, updateCategory, deleteCategory, resolveCategoryDisplay, UNCATEGORIZED } from './categories'
 
 describe('category repository', () => {
   beforeEach(async () => {
@@ -57,5 +57,16 @@ describe('category repository', () => {
 
     const active = await listActiveCategories()
     expect(active.map((c) => c.id)).toEqual([keep.id])
+  })
+
+  it('resolves deleted or missing categories to Uncategorized', async () => {
+    const active = await createCategory({ name: 'Pets', color: '#fb923c', type: 'expense' })
+    const gone = await createCategory({ name: 'Old', color: '#000000', type: 'expense' })
+    await deleteCategory(gone.id)
+    const all = await db.categories.toArray()
+
+    expect(resolveCategoryDisplay(all, active.id).name).toBe('Pets')
+    expect(resolveCategoryDisplay(all, gone.id)).toEqual(UNCATEGORIZED)
+    expect(resolveCategoryDisplay(all, 'missing-id')).toEqual(UNCATEGORIZED)
   })
 })

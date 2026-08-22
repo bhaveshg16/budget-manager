@@ -38,6 +38,16 @@ export async function updateCategory(id: string, changes: Partial<Pick<Category,
   await db.categories.update(id, { ...changes, updatedAt: Date.now() })
 }
 
+export const UNCATEGORIZED = { id: 'uncategorized', name: 'Uncategorized', color: '#94a3b8' } as const
+
+export function resolveCategoryDisplay(
+  categories: Category[], id: string
+): { id: string; name: string; color: string } {
+  const category = categories.find((c) => c.id === id)
+  if (!category || category.deletedAt) return UNCATEGORIZED
+  return { id: category.id, name: category.name, color: category.color }
+}
+
 export async function listActiveCategories(): Promise<Category[]> {
   return (await db.categories.toArray()).filter((c) => !c.deletedAt)
 }
