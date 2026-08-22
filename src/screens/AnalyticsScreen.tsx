@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { getCategoryBreakdown, getMonthlyTrend, getBudgetVsActual, getMonthComparison } from '../data/analytics'
-import type { CategoryTotal, MonthlyTotal, BudgetVsActual, MonthComparisonRow } from '../data/analytics'
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { getCategoryBreakdown, getMonthlyTrend, getBudgetVsActual } from '../data/analytics'
+import type { CategoryTotal, MonthlyTotal, BudgetVsActual } from '../data/analytics'
 import { currentMonthString } from '../utils/date'
 
 function lastNMonths(n: number, endMonth: string): string[] {
@@ -17,15 +17,12 @@ export function AnalyticsScreen() {
   const [breakdown, setBreakdown] = useState<CategoryTotal[]>([])
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const [budgetVsActual, setBudgetVsActual] = useState<BudgetVsActual[]>([])
-  const [comparison, setComparison] = useState<MonthComparisonRow[]>([])
 
   useEffect(() => {
     const months = lastNMonths(6, month)
-    const previousMonth = months[months.length - 2]
     getCategoryBreakdown(month, 'expense').then(setBreakdown)
     getMonthlyTrend(months).then(setTrend)
     getBudgetVsActual(month).then(setBudgetVsActual)
-    getMonthComparison(previousMonth, month).then(setComparison)
   }, [month])
 
   return (
@@ -69,17 +66,6 @@ export function AnalyticsScreen() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="bg-surface border border-border rounded-2xl p-3">
-        <h2 className="font-semibold mb-2 text-text">This month vs last month</h2>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={comparison}>
-            <XAxis dataKey="categoryName" tick={{ fill: 'var(--color-muted)' }} /><YAxis tick={{ fill: 'var(--color-muted)' }} /><Tooltip />
-            <Bar dataKey="amountA" fill="#94a3b8" name="Last month" />
-            <Bar dataKey="amountB" fill="var(--color-accent)" name="This month" />
-          </BarChart>
-        </ResponsiveContainer>
       </section>
     </div>
   )
