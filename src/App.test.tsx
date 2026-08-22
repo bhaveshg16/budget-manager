@@ -11,8 +11,14 @@ vi.mock('./auth/AuthProvider', () => ({
 // The signed-in path fires seeding/catch-up/sync side effects in a useEffect;
 // stub them so the App test stays isolated from Dexie and the network.
 vi.mock('./data/categories', () => ({ seedDefaultCategoriesIfEmpty: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('./data/mergeCategories', () => ({
+  mergeDuplicateCategories: vi.fn().mockResolvedValue({ deletedCategoryIds: [], deletedBudgetIds: [] }),
+}))
 vi.mock('./data/recurring', () => ({ catchUpRecurringTransactions: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('./sync/syncEngine', () => ({ syncAll: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('./sync/syncEngine', () => ({
+  syncAll: vi.fn().mockResolvedValue(undefined),
+  deleteRemoteRows: vi.fn().mockResolvedValue(undefined),
+}))
 
 describe('App', () => {
   it('shows the sign-in screen when there is no session', () => {

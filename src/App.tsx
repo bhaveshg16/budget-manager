@@ -3,8 +3,9 @@ import { Routes, Route } from 'react-router-dom'
 import { useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { seedDefaultCategoriesIfEmpty } from './data/categories'
+import { mergeDuplicateCategories } from './data/mergeCategories'
 import { catchUpRecurringTransactions } from './data/recurring'
-import { syncAll } from './sync/syncEngine'
+import { syncAll, deleteRemoteRows } from './sync/syncEngine'
 import { todayDateString } from './utils/date'
 import { SyncStatus } from './components/SyncStatus'
 import { BottomNav } from './components/BottomNav'
@@ -20,13 +21,27 @@ function App() {
 
   useEffect(() => {
     if (!session) return
-    seedDefaultCategoriesIfEmpty(session.user.id)
-      .then(() => catchUpRecurringTransactions(todayDateString()))
-      .then(() => {
-        setSyncing(true)
-        return syncAll()
-      })
-      .finally(() => setSyncing(false))
+    const userId = session.user.id
+    const boot = async () => {
+      setSyncing(true)
+      try {
+        // Pull first so a fresh device sees existing remote categories before deciding to seed;
+        // swallow network errors so an offline first run still seeds and works locally.
+        await syncAll().catch(() => {})
+        const merged = await mergeDuplicateCategories()
+        await seedDefaultCategoriesIfEmpty(userId)
+        await catchUpRecurringTransactions(todayDateString())
+        // Second sync pushes re-pointed/seeded rows so the remote FK (`on delete restrict`)
+        // no longer blocks deleting the merged-away duplicates. Budgets go first: their rows
+        // reference the loser categories. Failures are retried on a later boot.
+        await syncAll().catch(() => {})
+        await deleteRemoteRows('budgets', merged.deletedBudgetIds).catch(() => {})
+        await deleteRemoteRows('categories', merged.deletedCategoryIds).catch(() => {})
+      } finally {
+        setSyncing(false)
+      }
+    }
+    boot()
     // Depend on the user id, not the whole session object: Supabase's onAuthStateChange fires
     // TOKEN_REFRESHED roughly hourly with a new session object for the same user, and re-running
     // seed/catch-up/sync on every refresh would be redundant network work with no user action behind it.

@@ -23,6 +23,12 @@ async function pushRows(tableName: string, rows: Record<string, unknown>[], user
   if (error) throw error
 }
 
+export async function deleteRemoteRows(tableName: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from(tableName).delete().in('id', ids)
+  if (error) throw error
+}
+
 async function pullRows<Local>(
   tableName: string,
   since: number,

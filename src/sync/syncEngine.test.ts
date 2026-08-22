@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { db } from '../data/db'
-import { syncAll, getLastSyncedAt } from './syncEngine'
+import { syncAll, getLastSyncedAt, deleteRemoteRows } from './syncEngine'
 
 const upsertMock = vi.fn().mockResolvedValue({ error: null })
+const deleteInMock = vi.fn().mockResolvedValue({ error: null })
 
 // Per-table pull results, so tests can control what a `.select('*').gt(...)` pull returns for a
 // given table without affecting the others. Defaults to an empty pull (no rows changed remotely).
@@ -19,7 +20,7 @@ function selectChainFor(table: string) {
 vi.mock('../lib/supabaseClient', () => ({
   supabase: {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-    from: vi.fn((table: string) => ({ upsert: upsertMock, ...selectChainFor(table) })),
+    from: vi.fn((table: string) => ({ upsert: upsertMock, delete: () => ({ in: deleteInMock }), ...selectChainFor(table) })),
   },
 }))
 
@@ -29,6 +30,7 @@ describe('syncAll', () => {
     await db.transactions.clear()
     localStorage.clear()
     upsertMock.mockClear()
+    deleteInMock.mockClear()
     for (const key of Object.keys(pullData)) delete pullData[key]
   })
 
@@ -102,5 +104,21 @@ describe('syncAll', () => {
 
     const pulled = await db.categories.get('c-remote')
     expect(pulled?.deletedAt).toBe(new Date('2026-08-01T00:00:00Z').getTime())
+  })
+})
+
+describe('deleteRemoteRows', () => {
+  beforeEach(() => {
+    deleteInMock.mockClear()
+  })
+
+  it('deletes remote rows by id', async () => {
+    await deleteRemoteRows('categories', ['a', 'b'])
+    expect(deleteInMock).toHaveBeenCalledWith('id', ['a', 'b'])
+  })
+
+  it('skips the network entirely for an empty id list', async () => {
+    await deleteRemoteRows('categories', [])
+    expect(deleteInMock).not.toHaveBeenCalled()
   })
 })
