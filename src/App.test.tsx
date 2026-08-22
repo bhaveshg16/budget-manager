@@ -46,7 +46,7 @@ describe('App', () => {
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument()
   })
 
-  it('boots in order: pull, merge, seed, catch up, push, delete budgets, then delete categories', async () => {
+  it('boots in order: pull, merge, seed, catch up, delete budgets, push, then delete categories', async () => {
     vi.mocked(mergeDuplicateCategories).mockResolvedValueOnce({
       deletedCategoryIds: ['loser'],
       deletedBudgetIds: ['b-loser'],
@@ -68,9 +68,9 @@ describe('App', () => {
     expect(firstSync).toBeLessThan(merge)
     expect(merge).toBeLessThan(seed)
     expect(seed).toBeLessThan(catchUp)
-    expect(catchUp).toBeLessThan(secondSync)
-    expect(secondSync).toBeLessThan(deleteBudgets)
-    expect(deleteBudgets).toBeLessThan(deleteCategories)
+    expect(catchUp).toBeLessThan(deleteBudgets)
+    expect(deleteBudgets).toBeLessThan(secondSync)
+    expect(secondSync).toBeLessThan(deleteCategories)
   })
 
   it('logs a boot failure instead of leaving an unhandled rejection', async () => {

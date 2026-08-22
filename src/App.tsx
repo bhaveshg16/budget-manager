@@ -26,19 +26,23 @@ function App() {
       setSyncing(true)
       try {
         // Pull first so a fresh device sees existing remote categories before deciding to seed;
-        // swallow network errors so an offline first run still seeds and works locally.
-        await syncAll().catch(() => {})
+        // log-and-continue on network errors so an offline first run still seeds and works locally.
+        await syncAll().catch((e) => console.warn('sync failed', e))
         const merged = await mergeDuplicateCategories()
         await seedDefaultCategoriesIfEmpty(userId)
         await catchUpRecurringTransactions(todayDateString())
+        // Delete merged-away remote budgets BEFORE pushing: a surviving budget re-pointed to the
+        // winner category would otherwise collide with a remote loser row on the
+        // unique (user_id, category_id, month) constraint and fail the whole budgets push.
+        // Nothing references budget rows, so deleting them early is safe.
+        await deleteRemoteRows('budgets', merged.deletedBudgetIds).catch((e) => console.warn('sync failed', e))
         // Second sync pushes re-pointed/seeded rows so the remote FK (`on delete restrict`)
-        // no longer blocks deleting the merged-away duplicates. Budgets go first: their rows
-        // reference the loser categories. If a delete fails, THIS device won't retry — the losers
-        // are already gone locally, so the next boot's merge finds nothing to delete. The orphaned
-        // remote rows get cleaned up when a fresh device pulls everything, re-merges, and deletes.
-        await syncAll().catch(() => {})
-        await deleteRemoteRows('budgets', merged.deletedBudgetIds).catch(() => {})
-        await deleteRemoteRows('categories', merged.deletedCategoryIds).catch(() => {})
+        // no longer blocks deleting the merged-away duplicate categories. If a delete fails,
+        // THIS device won't retry — the losers are already gone locally, so the next boot's merge
+        // finds nothing to delete. The orphaned remote rows get cleaned up when a fresh device
+        // pulls everything, re-merges, and deletes.
+        await syncAll().catch((e) => console.warn('sync failed', e))
+        await deleteRemoteRows('categories', merged.deletedCategoryIds).catch((e) => console.warn('sync failed', e))
       } finally {
         setSyncing(false)
       }
