@@ -1,14 +1,22 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
-import { createTransaction } from '../data/transactions'
+import { createTransaction, updateTransaction, deleteTransaction } from '../data/transactions'
 import { createRecurringRule } from '../data/recurring'
 import { todayDateString, nowTimeString } from '../utils/date'
 import type { TransactionType } from '../data/db'
 
 export function AddEditEntryScreen() {
   const navigate = useNavigate()
+  function goBack() {
+    if (typeof window !== 'undefined' && (window.history.state?.idx ?? 0) > 0) navigate(-1)
+    else navigate('/')
+  }
+  const { id } = useParams()
+  const editMode = Boolean(id)
+  const existing = useLiveQuery(() => (id ? db.transactions.get(id) : undefined), [id])
+  const [loaded, setLoaded] = useState(false)
   const categories = useLiveQuery(() => db.categories.toArray(), [])
 
   const [type, setType] = useState<TransactionType>('expense')
@@ -21,7 +29,21 @@ export function AddEditEntryScreen() {
   const [makeRecurring, setMakeRecurring] = useState(false)
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly')
 
-  const filteredCategories = categories?.filter((c) => c.type === type && !c.deletedAt) ?? []
+  useEffect(() => {
+    if (existing && !loaded) {
+      setType(existing.type)
+      setCategoryId(existing.categoryId)
+      setAmount(String(existing.amount))
+      setDescription(existing.description)
+      setDate(existing.date)
+      setTime(existing.time)
+      setLoaded(true)
+    }
+  }, [existing, loaded])
+
+  // Deleted categories are hidden from the picker, except the one the transaction being edited
+  // already uses — otherwise opening an old entry would silently re-categorize it on save.
+  const filteredCategories = categories?.filter((c) => c.type === type && (!c.deletedAt || c.id === categoryId)) ?? []
   const effectiveCategoryId = filteredCategories.some((c) => c.id === categoryId)
     ? categoryId
     : (filteredCategories[0]?.id ?? '')
@@ -29,6 +51,12 @@ export function AddEditEntryScreen() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const numericAmount = Number(amount)
+
+    if (editMode && id) {
+      await updateTransaction(id, { type, categoryId: effectiveCategoryId, amount: numericAmount, description, date, time })
+      goBack()
+      return
+    }
 
     await createTransaction({ type, categoryId: effectiveCategoryId, amount: numericAmount, description, date, time })
 
@@ -78,16 +106,25 @@ export function AddEditEntryScreen() {
         </div>
       </div>
 
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={makeRecurring} onChange={(e) => setMakeRecurring(e.target.checked)} />
-        Make this recurring
-      </label>
+      {!editMode && (
+        <>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={makeRecurring} onChange={(e) => setMakeRecurring(e.target.checked)} />
+            Make this recurring
+          </label>
 
-      {makeRecurring && (
-        <select value={frequency} onChange={(e) => setFrequency(e.target.value as 'weekly' | 'monthly')} className="border border-border bg-surface rounded-lg p-2">
-          <option value="monthly">Monthly</option>
-          <option value="weekly">Weekly</option>
-        </select>
+          {makeRecurring && (
+            <select value={frequency} onChange={(e) => setFrequency(e.target.value as 'weekly' | 'monthly')} className="border border-border bg-surface rounded-lg p-2">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          )}
+        </>
+      )}
+
+      {editMode && (
+        <button type="button" onClick={async () => { await deleteTransaction(id!); goBack() }}
+          className="rounded-lg border border-border p-3 font-medium text-red-500">Delete</button>
       )}
 
       <button type="submit" className="rounded-lg bg-accent text-white p-3 font-medium">Save</button>

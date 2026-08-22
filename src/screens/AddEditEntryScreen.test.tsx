@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { db } from '../data/db'
 import { createCategory } from '../data/categories'
+import { createTransaction } from '../data/transactions'
 import { AddEditEntryScreen } from './AddEditEntryScreen'
 
 describe('AddEditEntryScreen', () => {
@@ -48,5 +49,44 @@ describe('AddEditEntryScreen', () => {
 
     const dateInput = (await screen.findByLabelText(/date/i)) as HTMLInputElement
     expect(dateInput.value).toBe('2026-07-09')
+  })
+})
+
+describe('AddEditEntryScreen edit mode', () => {
+  beforeEach(async () => {
+    await db.transactions.clear()
+    await db.categories.clear()
+  })
+
+  it('prefills an existing transaction and updates it (no second row)', async () => {
+    await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
+    const txn = await createTransaction({ type: 'expense', categoryId: 'c1', amount: 100, description: 'Old', date: '2026-07-09', time: '10:00' })
+
+    render(<MemoryRouter initialEntries={[`/entry/${txn.id}`]}>
+      <Routes><Route path="/entry/:id" element={<AddEditEntryScreen />} /></Routes>
+    </MemoryRouter>)
+
+    const desc = (await screen.findByLabelText(/description/i)) as HTMLInputElement
+    await waitFor(() => expect(desc.value).toBe('Old'))
+    await userEvent.clear(desc)
+    await userEvent.type(desc, 'New')
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    const rows = await db.transactions.toArray()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].description).toBe('New')
+    expect(rows[0].id).toBe(txn.id)
+  })
+
+  it('deletes the transaction in edit mode', async () => {
+    await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
+    const txn = await createTransaction({ type: 'expense', categoryId: 'c1', amount: 100, description: 'X', date: '2026-07-09', time: '10:00' })
+
+    render(<MemoryRouter initialEntries={[`/entry/${txn.id}`]}>
+      <Routes><Route path="/entry/:id" element={<AddEditEntryScreen />} /></Routes>
+    </MemoryRouter>)
+
+    await userEvent.click(await screen.findByRole('button', { name: /delete/i }))
+    await waitFor(async () => expect(await db.transactions.count()).toBe(0))
   })
 })

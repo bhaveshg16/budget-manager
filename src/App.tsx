@@ -5,6 +5,7 @@ import { SignInScreen } from './auth/SignInScreen'
 import { seedDefaultCategoriesIfEmpty } from './data/categories'
 import { mergeDuplicateCategories } from './data/mergeCategories'
 import { catchUpRecurringTransactions } from './data/recurring'
+import { resetLocalDataForUser } from './data/localReset'
 import { syncAll, deleteRemoteRows } from './sync/syncEngine'
 import { todayDateString } from './utils/date'
 import { SyncStatus } from './components/SyncStatus'
@@ -16,8 +17,9 @@ import { AnalyticsScreen } from './screens/AnalyticsScreen'
 import { CategoriesBudgetsScreen } from './screens/CategoriesBudgetsScreen'
 
 function App() {
-  const { session, loading } = useAuth()
+  const { session, loading, signOut } = useAuth()
   const [syncing, setSyncing] = useState(false)
+  const [readyUserId, setReadyUserId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!session) return
@@ -25,6 +27,8 @@ function App() {
     const boot = async () => {
       setSyncing(true)
       try {
+        await resetLocalDataForUser(userId)
+        setReadyUserId(userId) // local data is now correct for this user; safe to render screens
         // Pull first so a fresh device sees existing remote categories before deciding to seed;
         // log-and-continue on network errors so an offline first run still seeds and works locally.
         await syncAll().catch((e) => console.warn('sync failed', e))
@@ -54,13 +58,23 @@ function App() {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id])
 
+  async function handleSignOut() {
+    if (!navigator.onLine && !window.confirm("You're offline. Unsynced changes may be lost. Sign out anyway?")) return
+    await signOut()
+  }
+
   if (loading) return null
   if (!session) return <SignInScreen />
+  if (readyUserId !== session.user.id) return null
 
   return (
     <div className="min-h-screen bg-bg text-text">
-      <header className="flex items-center justify-end p-3">
-        <SyncStatus syncing={syncing} />
+      <header className="flex items-center justify-between gap-2 p-3">
+        <span className="truncate text-sm text-muted">{session.user.email}</span>
+        <div className="flex items-center gap-3">
+          <SyncStatus syncing={syncing} />
+          <button onClick={handleSignOut} className="text-sm text-accent">Sign out</button>
+        </div>
       </header>
       <main className="mx-auto max-w-lg px-4 pb-24">
         <Routes>

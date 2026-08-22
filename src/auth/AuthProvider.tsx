@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { syncAll } from '../sync/syncEngine'
 
 interface AuthContextValue {
   session: Session | null
   loading: boolean
   signInWithEmail: (email: string) => Promise<{ error: string | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -34,7 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null }
   }
 
-  return <AuthContext.Provider value={{ session, loading, signInWithEmail, verifyOtp }}>{children}</AuthContext.Provider>
+  async function signOut() {
+    if (navigator.onLine) {
+      try {
+        await Promise.race([syncAll(), new Promise((resolve) => setTimeout(resolve, 3000))])
+      } catch {
+        // Best-effort: a failed final sync must not block sign-out.
+      }
+    }
+    await supabase.auth.signOut()
+  }
+
+  return <AuthContext.Provider value={{ session, loading, signInWithEmail, verifyOtp, signOut }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {

@@ -24,4 +24,17 @@ describe('HomeScreen', () => {
 
     expect(await screen.findByText('₹250')).toBeInTheDocument()
   })
+
+  it('links each transaction row to its edit route', async () => {
+    const category = await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
+    await createTransaction({
+      type: 'expense', categoryId: category.id, amount: 250, description: 'Lunch',
+      date: todayDateString(), time: '13:00',
+    })
+
+    render(<BrowserRouter><HomeScreen /></BrowserRouter>)
+
+    const link = await screen.findByRole('link', { name: /Lunch/i })
+    expect(link.getAttribute('href')).toMatch(/^\/entry\/.+/)
+  })
 })
