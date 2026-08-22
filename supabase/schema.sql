@@ -5,8 +5,12 @@ create table if not exists categories (
   color text not null,
   type text not null check (type in ('expense','income')),
   is_default boolean not null default false,
+  deleted_at timestamptz,
   updated_at timestamptz not null default now()
 );
+
+-- Migration for existing databases (run once in the Supabase SQL editor):
+-- alter table categories add column if not exists deleted_at timestamptz;
 
 create table if not exists recurring_rules (
   id text primary key,

@@ -25,6 +25,7 @@ vi.mock('../lib/supabaseClient', () => ({
 
 describe('syncAll', () => {
   beforeEach(async () => {
+    await db.categories.clear()
     await db.transactions.clear()
     localStorage.clear()
     upsertMock.mockClear()
@@ -80,5 +81,26 @@ describe('syncAll', () => {
     const expected = new Date('2026-07-19T08:30:00.000Z').getTime()
     expect(local?.createdAt).toBe(expected)
     expect(local?.updatedAt).toBe(expected)
+  })
+
+  it('round-trips category deleted_at through push and pull', async () => {
+    await db.categories.add({
+      id: 'c-del', name: 'Old', color: '#000000', type: 'expense',
+      isDefault: false, updatedAt: 5, deletedAt: 5,
+    })
+    pullData['categories'] = [{
+      id: 'c-remote', name: 'Remote', color: '#ffffff', type: 'expense',
+      is_default: false, updated_at: '2026-08-01T00:00:00Z', deleted_at: '2026-08-01T00:00:00Z',
+    }]
+
+    await syncAll()
+
+    const pushedCategories = upsertMock.mock.calls
+      .flatMap(([rows]) => rows as Record<string, unknown>[])
+      .filter((r) => r.id === 'c-del')
+    expect(pushedCategories[0].deleted_at).toBe(new Date(5).toISOString())
+
+    const pulled = await db.categories.get('c-remote')
+    expect(pulled?.deletedAt).toBe(new Date('2026-08-01T00:00:00Z').getTime())
   })
 })
