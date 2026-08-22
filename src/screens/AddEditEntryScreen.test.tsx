@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { db } from '../data/db'
-import { createCategory } from '../data/categories'
+import { createCategory, deleteCategory } from '../data/categories'
 import { createTransaction } from '../data/transactions'
 import { AddEditEntryScreen } from './AddEditEntryScreen'
 
@@ -76,6 +76,28 @@ describe('AddEditEntryScreen edit mode', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].description).toBe('New')
     expect(rows[0].id).toBe(txn.id)
+  })
+
+  it('keeps a soft-deleted category on the transaction that already uses it when saving', async () => {
+    const gone = await createCategory({ name: 'Old Cat', color: '#000000', type: 'expense' })
+    await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
+    await deleteCategory(gone.id)
+    const txn = await createTransaction({ type: 'expense', categoryId: gone.id, amount: 100, description: 'Keep me', date: '2026-07-09', time: '10:00' })
+
+    render(<MemoryRouter initialEntries={[`/entry/${txn.id}`]}>
+      <Routes><Route path="/entry/:id" element={<AddEditEntryScreen />} /></Routes>
+    </MemoryRouter>)
+
+    const categorySelect = (await screen.findByLabelText(/category/i)) as HTMLSelectElement
+    await waitFor(() => expect(categorySelect.value).toBe(gone.id))
+    expect(screen.getByRole('option', { name: 'Old Cat' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(async () => {
+      const rows = await db.transactions.toArray()
+      expect(rows).toHaveLength(1)
+      expect(rows[0].categoryId).toBe(gone.id)
+    })
   })
 
   it('deletes the transaction in edit mode', async () => {
