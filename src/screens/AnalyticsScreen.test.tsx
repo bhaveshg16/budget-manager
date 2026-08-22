@@ -40,6 +40,23 @@ describe('AnalyticsScreen comparison builder', () => {
     })
   })
 
+  it('falls back to the default selection when persisted data is malformed', async () => {
+    const month = currentMonthString()
+    localStorage.setItem('budget-manager:compareSelection', 'null')
+    render(<AnalyticsScreen />)
+    expect(await screen.findByText('Compare')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: month, pressed: true })).toBeInTheDocument()
+  })
+
+  it('prunes persisted months older than the last 12 and defaults when none remain', async () => {
+    const month = currentMonthString()
+    localStorage.setItem('budget-manager:compareSelection', JSON.stringify({ months: ['2020-01'], excludedCategoryIds: [] }))
+    render(<AnalyticsScreen />)
+    expect(await screen.findByText('Compare')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: month, pressed: true })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '2020-01' })).not.toBeInTheDocument()
+  })
+
   it('shows per-month amounts with a delta column and drops excluded categories', async () => {
     const month = currentMonthString()
     const prevMonth = previousMonthString(month)

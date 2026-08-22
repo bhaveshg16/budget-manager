@@ -15,10 +15,16 @@ function lastNMonths(n: number, endMonth: string): string[] {
 const COMPARE_KEY = 'budget-manager:compareSelection'
 interface CompareSelection { months: string[]; excludedCategoryIds: string[] }
 
-function loadSelection(defaultMonths: string[]): CompareSelection {
+function loadSelection(defaultMonths: string[], allowedMonths: string[]): CompareSelection {
   try {
     const raw = localStorage.getItem(COMPARE_KEY)
-    if (raw) return JSON.parse(raw) as CompareSelection
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<CompareSelection> | null
+      if (Array.isArray(parsed?.months) && parsed.months.length > 0 && Array.isArray(parsed?.excludedCategoryIds)) {
+        const months = parsed.months.filter((m) => allowedMonths.includes(m))
+        if (months.length > 0) return { months, excludedCategoryIds: parsed.excludedCategoryIds }
+      }
+    }
   } catch { /* corrupted selection falls back to default */ }
   return { months: defaultMonths, excludedCategoryIds: [] }
 }
@@ -34,7 +40,7 @@ export function AnalyticsScreen() {
   const [breakdown, setBreakdown] = useState<CategoryTotal[]>([])
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const [budgetVsActual, setBudgetVsActual] = useState<BudgetVsActual[]>([])
-  const [selection, setSelection] = useState<CompareSelection>(() => loadSelection(lastNMonths(2, month)))
+  const [selection, setSelection] = useState<CompareSelection>(() => loadSelection(lastNMonths(2, month), lastNMonths(12, month)))
   const [compareRows, setCompareRows] = useState<ComparisonRow[]>([])
 
   useEffect(() => {

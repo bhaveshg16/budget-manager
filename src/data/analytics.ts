@@ -83,7 +83,7 @@ export async function getCategoryComparison(months: string[]): Promise<Compariso
       rows.set(item.categoryId, row)
     }
   }
-  return [...rows.values()].sort((a, b) => (a.categoryName < b.categoryName ? -1 : 1))
+  return [...rows.values()].sort((a, b) => a.categoryName.localeCompare(b.categoryName))
 }
 
 export async function spendByDayForMonth(month: string): Promise<Map<string, number>> {
