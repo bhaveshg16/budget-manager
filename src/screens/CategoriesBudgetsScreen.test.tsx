@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../data/db'
 import { createCategory } from '../data/categories'
 import { setBudgetLimit } from '../data/budgets'
@@ -11,6 +11,10 @@ describe('CategoriesBudgetsScreen', () => {
   beforeEach(async () => {
     await db.categories.clear()
     await db.budgets.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('sets a monthly budget limit for a category', async () => {
@@ -51,12 +55,23 @@ describe('CategoriesBudgetsScreen', () => {
     expect(stored.some((c) => c.name === 'Pets' && !c.isDefault)).toBe(true)
   })
 
-  it('deletes a category and hides it from budgets', async () => {
+  it('deletes a category after confirmation and hides it from budgets', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     await db.categories.add({ id: 'c1', name: 'Food', color: '#f59e0b', type: 'expense', isDefault: true, updatedAt: 1 })
     render(<CategoriesBudgetsScreen />)
     await userEvent.click(await screen.findByRole('button', { name: /delete food/i }))
     await waitFor(async () => expect((await db.categories.get('c1'))?.deletedAt).toBeGreaterThan(0))
-    expect(screen.queryByLabelText('Food')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByLabelText('Food')).not.toBeInTheDocument())
+  })
+
+  it('does not delete a category when confirmation is declined', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await db.categories.add({ id: 'c1', name: 'Food', color: '#f59e0b', type: 'expense', isDefault: true, updatedAt: 1 })
+    render(<CategoriesBudgetsScreen />)
+    await userEvent.click(await screen.findByRole('button', { name: /delete food/i }))
+    expect(window.confirm).toHaveBeenCalled()
+    expect((await db.categories.get('c1'))?.deletedAt).toBeUndefined()
+    expect(screen.getByLabelText('Food')).toBeInTheDocument()
   })
 
   it('renames a category on blur', async () => {

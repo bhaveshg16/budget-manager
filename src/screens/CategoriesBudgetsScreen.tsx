@@ -36,8 +36,10 @@ export function CategoriesBudgetsScreen() {
             <input
               type="color"
               aria-label={`Color for ${c.name}`}
-              value={c.color}
-              onChange={(e) => updateCategory(c.id, { color: e.target.value })}
+              defaultValue={c.color}
+              onBlur={(e) => {
+                if (e.target.value !== c.color) updateCategory(c.id, { color: e.target.value })
+              }}
               className="h-8 w-8 shrink-0 rounded border border-border bg-surface"
             />
             <input
@@ -46,6 +48,7 @@ export function CategoriesBudgetsScreen() {
               onBlur={(e) => {
                 const name = e.target.value.trim()
                 if (name && name !== c.name) updateCategory(c.id, { name })
+                else if (!name) e.target.value = c.name
               }}
               className="min-w-0 flex-1 rounded-lg border border-border bg-surface p-2"
             />
@@ -53,7 +56,11 @@ export function CategoriesBudgetsScreen() {
             <button
               type="button"
               aria-label={`Delete ${c.name}`}
-              onClick={() => deleteCategory(c.id)}
+              onClick={() => {
+                if (window.confirm(`Delete ${c.name}? Its transactions will show as Uncategorized.`)) {
+                  deleteCategory(c.id)
+                }
+              }}
               className="rounded-lg border border-border px-2 py-1 text-sm text-muted"
             >
               Delete
