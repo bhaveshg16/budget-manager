@@ -54,17 +54,20 @@ describe('analytics', () => {
     await db.categories.bulkAdd([
       { id: 'c1', name: 'Food', color: '#f59e0b', type: 'expense', isDefault: true, updatedAt: 1 },
       { id: 'c2', name: 'Rent', color: '#ef4444', type: 'expense', isDefault: true, updatedAt: 1 },
+      { id: 'c3', name: 'Transport', color: '#14b8a6', type: 'expense', isDefault: true, updatedAt: 1 },
     ])
     await db.transactions.bulkAdd([
       { id: 't1', type: 'expense', categoryId: 'c1', amount: 10, description: '', date: '2026-07-05', time: '09:00', createdAt: 1, updatedAt: 1 },
       { id: 't2', type: 'expense', categoryId: 'c1', amount: 20, description: '', date: '2026-08-05', time: '09:00', createdAt: 1, updatedAt: 1 },
       { id: 't3', type: 'expense', categoryId: 'c2', amount: 99, description: '', date: '2026-08-06', time: '09:00', createdAt: 1, updatedAt: 1 },
+      { id: 't4', type: 'expense', categoryId: 'c3', amount: 55, description: '', date: '2026-07-10', time: '09:00', createdAt: 1, updatedAt: 1 },
     ])
 
     const rows = await getCategoryComparison(['2026-07', '2026-08'])
 
     expect(rows).toContainEqual({ categoryId: 'c1', categoryName: 'Food', color: '#f59e0b', amounts: { '2026-07': 10, '2026-08': 20 } })
     expect(rows).toContainEqual({ categoryId: 'c2', categoryName: 'Rent', color: '#ef4444', amounts: { '2026-08': 99 } })
+    expect(rows).toContainEqual({ categoryId: 'c3', categoryName: 'Transport', color: '#14b8a6', amounts: { '2026-07': 55 } })
   })
 
   it('lumps deleted and missing categories into one Uncategorized bucket', async () => {

@@ -70,7 +70,7 @@ export interface ComparisonRow {
   categoryId: string
   categoryName: string
   color: string
-  amounts: Record<string, number> // month (YYYY-MM) -> expense total
+  amounts: Record<string, number> // month (YYYY-MM) -> expense total; months with no spending are absent
 }
 
 export async function getCategoryComparison(months: string[]): Promise<ComparisonRow[]> {
@@ -83,7 +83,7 @@ export async function getCategoryComparison(months: string[]): Promise<Compariso
       rows.set(item.categoryId, row)
     }
   }
-  return [...rows.values()]
+  return [...rows.values()].sort((a, b) => (a.categoryName < b.categoryName ? -1 : 1))
 }
 
 export async function spendByDayForMonth(month: string): Promise<Map<string, number>> {
