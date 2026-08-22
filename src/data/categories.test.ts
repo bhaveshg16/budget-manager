@@ -9,13 +9,20 @@ describe('category repository', () => {
   })
 
   it('seeds default categories only when empty', async () => {
-    await seedDefaultCategoriesIfEmpty()
+    await seedDefaultCategoriesIfEmpty('user-1')
     const first = await listCategories()
     expect(first.length).toBeGreaterThan(0)
 
-    await seedDefaultCategoriesIfEmpty()
+    await seedDefaultCategoriesIfEmpty('user-1')
     const second = await listCategories()
     expect(second.length).toBe(first.length)
+  })
+
+  it('seeds deterministic per-user ids so two fresh devices converge', async () => {
+    await seedDefaultCategoriesIfEmpty('user-1')
+    const first = await listCategories()
+    expect(first.find((c) => c.name === 'Food')?.id).toBe('def-food-user-1')
+    expect(first.find((c) => c.name === 'Bills & Utilities')?.id).toBe('def-bills-utilities-user-1')
   })
 
   it('creates a custom category', async () => {

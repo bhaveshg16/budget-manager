@@ -20,7 +20,7 @@ function App() {
 
   useEffect(() => {
     if (!session) return
-    seedDefaultCategoriesIfEmpty()
+    seedDefaultCategoriesIfEmpty(session.user.id)
       .then(() => catchUpRecurringTransactions(todayDateString()))
       .then(() => {
         setSyncing(true)

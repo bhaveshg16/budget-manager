@@ -15,12 +15,16 @@ const DEFAULT_CATEGORIES: Array<Omit<Category, 'id' | 'updatedAt'>> = [
   { name: 'Other Income', color: '#0ea5e9', type: 'income', isDefault: true },
 ]
 
-export async function seedDefaultCategoriesIfEmpty(): Promise<void> {
+const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+export async function seedDefaultCategoriesIfEmpty(userId: string): Promise<void> {
   await db.transaction('rw', db.categories, async () => {
     const count = await db.categories.count()
     if (count > 0) return
     const now = Date.now()
-    await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((c) => ({ ...c, id: makeId(), updatedAt: now })))
+    await db.categories.bulkAdd(
+      DEFAULT_CATEGORIES.map((c) => ({ ...c, id: `def-${slugify(c.name)}-${userId}`, updatedAt: now }))
+    )
   })
 }
 
