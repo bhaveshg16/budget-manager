@@ -25,8 +25,15 @@ export async function mergeDuplicateCategories(): Promise<MergeResult> {
 
     for (const group of groups.values()) {
       if (group.length < 2) continue
-      const sorted = [...group].sort((a, b) => a.id.localeCompare(b.id))
+      // Code-unit comparison, not localeCompare: winner choice must not depend on the
+      // device's system locale or two devices could pick (and delete) different winners.
+      const sorted = [...group].sort((a, b) => (a.id < b.id ? -1 : 1))
       const winner = sorted.find((c) => c.id.startsWith('def-')) ?? sorted[0]
+
+      // Snapshot pre-merge budget timestamps: re-pointing bumps updatedAt, and the
+      // collision collapse below must compare the ORIGINAL recency, not the bump.
+      const groupBudgets = await db.budgets.where('categoryId').anyOf(sorted.map((c) => c.id)).toArray()
+      const originalUpdatedAt = new Map(groupBudgets.map((b) => [b.id, b.updatedAt]))
 
       for (const loser of sorted) {
         if (loser.id === winner.id) continue
@@ -44,7 +51,12 @@ export async function mergeDuplicateCategories(): Promise<MergeResult> {
       for (const b of budgets) byMonth.set(b.month, [...(byMonth.get(b.month) ?? []), b])
       for (const rows of byMonth.values()) {
         if (rows.length < 2) continue
-        const keep = rows.reduce((a, b) => (b.updatedAt > a.updatedAt ? b : a))
+        const keep = rows.reduce((a, b) => {
+          const aAt = originalUpdatedAt.get(a.id) ?? a.updatedAt
+          const bAt = originalUpdatedAt.get(b.id) ?? b.updatedAt
+          // Ties break on the smaller id so every device collapses to the same row.
+          return bAt > aAt || (bAt === aAt && b.id < a.id) ? b : a
+        })
         for (const b of rows) {
           if (b.id === keep.id) continue
           await db.budgets.delete(b.id)

@@ -23,6 +23,19 @@ describe('mergeDuplicateCategories', () => {
     expect(result.deletedCategoryIds.sort()).toEqual(['a-food', 'b-food'])
   })
 
+  it('falls back to the code-unit-smallest id as winner when no def-* id exists', async () => {
+    await db.categories.bulkAdd([cat('b-food', 'Food'), cat('a-food', 'Food')])
+    await db.transactions.add({ id: 't1', type: 'expense', categoryId: 'b-food', amount: 10, description: '', date: '2026-08-01', time: '09:00', createdAt: 1, updatedAt: 1 })
+    await db.recurringRules.add({ id: 'r1', categoryId: 'b-food', amount: 5, description: '', type: 'expense', frequency: 'monthly', dayOfMonth: 1, isActive: true, startDate: '2026-01-01', updatedAt: 1 })
+
+    const result = await mergeDuplicateCategories()
+
+    expect((await db.categories.toArray()).map((c) => c.id)).toEqual(['a-food'])
+    expect((await db.transactions.get('t1'))?.categoryId).toBe('a-food')
+    expect((await db.recurringRules.get('r1'))?.categoryId).toBe('a-food')
+    expect(result.deletedCategoryIds).toEqual(['b-food'])
+  })
+
   it('collapses same-month budget collisions keeping the latest', async () => {
     await db.categories.bulkAdd([cat('a-food', 'Food'), cat('b-food', 'Food')])
     await db.budgets.bulkAdd([
@@ -36,6 +49,21 @@ describe('mergeDuplicateCategories', () => {
     expect(budgets).toHaveLength(1)
     expect(budgets[0]).toMatchObject({ id: 'bud-new', categoryId: 'a-food', limitAmount: 200 })
     expect(result.deletedBudgetIds).toEqual(['bud-old'])
+  })
+
+  it('keeps the winner category budget when it has the later original updatedAt', async () => {
+    await db.categories.bulkAdd([cat('a-food', 'Food'), cat('b-food', 'Food')])
+    await db.budgets.bulkAdd([
+      { id: 'bud-mine', categoryId: 'a-food', month: '2026-08', limitAmount: 500, updatedAt: 5 },
+      { id: 'bud-stale', categoryId: 'b-food', month: '2026-08', limitAmount: 100, updatedAt: 1 },
+    ])
+
+    const result = await mergeDuplicateCategories()
+
+    const budgets = await db.budgets.toArray()
+    expect(budgets).toHaveLength(1)
+    expect(budgets[0]).toMatchObject({ id: 'bud-mine', categoryId: 'a-food', limitAmount: 500 })
+    expect(result.deletedBudgetIds).toEqual(['bud-stale'])
   })
 
   it('does not merge across types or touch soft-deleted categories, and is idempotent', async () => {
