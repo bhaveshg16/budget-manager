@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { db } from '../data/db'
+import { supabase } from '../lib/supabaseClient'
 import { syncAll, getLastSyncedAt, deleteRemoteRows } from './syncEngine'
 
 const upsertMock = vi.fn().mockResolvedValue({ error: null })
@@ -110,15 +111,18 @@ describe('syncAll', () => {
 describe('deleteRemoteRows', () => {
   beforeEach(() => {
     deleteInMock.mockClear()
+    vi.mocked(supabase.from).mockClear()
   })
 
   it('deletes remote rows by id', async () => {
     await deleteRemoteRows('categories', ['a', 'b'])
+    expect(supabase.from).toHaveBeenCalledWith('categories')
     expect(deleteInMock).toHaveBeenCalledWith('id', ['a', 'b'])
   })
 
   it('skips the network entirely for an empty id list', async () => {
     await deleteRemoteRows('categories', [])
+    expect(supabase.from).not.toHaveBeenCalled()
     expect(deleteInMock).not.toHaveBeenCalled()
   })
 })

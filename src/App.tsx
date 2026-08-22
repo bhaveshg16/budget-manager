@@ -33,7 +33,9 @@ function App() {
         await catchUpRecurringTransactions(todayDateString())
         // Second sync pushes re-pointed/seeded rows so the remote FK (`on delete restrict`)
         // no longer blocks deleting the merged-away duplicates. Budgets go first: their rows
-        // reference the loser categories. Failures are retried on a later boot.
+        // reference the loser categories. If a delete fails, THIS device won't retry — the losers
+        // are already gone locally, so the next boot's merge finds nothing to delete. The orphaned
+        // remote rows get cleaned up when a fresh device pulls everything, re-merges, and deletes.
         await syncAll().catch(() => {})
         await deleteRemoteRows('budgets', merged.deletedBudgetIds).catch(() => {})
         await deleteRemoteRows('categories', merged.deletedCategoryIds).catch(() => {})
@@ -41,7 +43,7 @@ function App() {
         setSyncing(false)
       }
     }
-    boot()
+    boot().catch((e) => console.error('boot failed', e))
     // Depend on the user id, not the whole session object: Supabase's onAuthStateChange fires
     // TOKEN_REFRESHED roughly hourly with a new session object for the same user, and re-running
     // seed/catch-up/sync on every refresh would be redundant network work with no user action behind it.
