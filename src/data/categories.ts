@@ -38,6 +38,14 @@ export async function updateCategory(id: string, changes: Partial<Pick<Category,
   await db.categories.update(id, { ...changes, updatedAt: Date.now() })
 }
 
+export async function listActiveCategories(): Promise<Category[]> {
+  return (await db.categories.toArray()).filter((c) => !c.deletedAt)
+}
+
 export async function deleteCategory(id: string): Promise<void> {
-  await db.categories.delete(id)
+  const now = Date.now()
+  await db.transaction('rw', db.categories, db.recurringRules, async () => {
+    await db.categories.update(id, { deletedAt: now, updatedAt: now })
+    await db.recurringRules.where('categoryId').equals(id).modify({ isActive: false, updatedAt: now })
+  })
 }
