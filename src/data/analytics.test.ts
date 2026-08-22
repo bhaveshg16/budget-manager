@@ -72,6 +72,24 @@ describe('analytics', () => {
     ]))
   })
 
+  it('lumps deleted and missing categories into one Uncategorized bucket', async () => {
+    await db.categories.add({ id: 'c-gone', name: 'Old', color: '#000', type: 'expense', isDefault: false, deletedAt: 1, updatedAt: 1 })
+    await db.transactions.bulkAdd([
+      { id: 't1', type: 'expense', categoryId: 'c-gone', amount: 10, description: '', date: '2026-08-05', time: '09:00', createdAt: 1, updatedAt: 1 },
+      { id: 't2', type: 'expense', categoryId: 'missing', amount: 5, description: '', date: '2026-08-06', time: '09:00', createdAt: 1, updatedAt: 1 },
+    ])
+
+    const breakdown = await getCategoryBreakdown('2026-08', 'expense')
+    expect(breakdown).toEqual([{ categoryId: 'uncategorized', categoryName: 'Uncategorized', color: '#94a3b8', total: 15 }])
+  })
+
+  it('excludes budgets for deleted categories from budget vs actual', async () => {
+    await db.categories.add({ id: 'c-gone', name: 'Old', color: '#000', type: 'expense', isDefault: false, deletedAt: 1, updatedAt: 1 })
+    await db.budgets.add({ id: 'b1', categoryId: 'c-gone', month: '2026-08', limitAmount: 100, updatedAt: 1 })
+
+    expect(await getBudgetVsActual('2026-08')).toEqual([])
+  })
+
   it('excludes categories that have spending but no budget set', async () => {
     const food = await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
     const rent = await createCategory({ name: 'Rent', color: '#ef4444', type: 'expense' })
