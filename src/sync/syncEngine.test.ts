@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { db } from '../data/db'
-import { syncAll, getLastSyncedAt } from './syncEngine'
+import { supabase } from '../lib/supabaseClient'
+import { syncAll, getLastSyncedAt, deleteRemoteRows } from './syncEngine'
 
 const upsertMock = vi.fn().mockResolvedValue({ error: null })
+const deleteInMock = vi.fn().mockResolvedValue({ error: null })
 
 // Per-table pull results, so tests can control what a `.select('*').gt(...)` pull returns for a
 // given table without affecting the others. Defaults to an empty pull (no rows changed remotely).
@@ -19,15 +21,17 @@ function selectChainFor(table: string) {
 vi.mock('../lib/supabaseClient', () => ({
   supabase: {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-    from: vi.fn((table: string) => ({ upsert: upsertMock, ...selectChainFor(table) })),
+    from: vi.fn((table: string) => ({ upsert: upsertMock, delete: () => ({ in: deleteInMock }), ...selectChainFor(table) })),
   },
 }))
 
 describe('syncAll', () => {
   beforeEach(async () => {
+    await db.categories.clear()
     await db.transactions.clear()
     localStorage.clear()
     upsertMock.mockClear()
+    deleteInMock.mockClear()
     for (const key of Object.keys(pullData)) delete pullData[key]
   })
 
@@ -80,5 +84,45 @@ describe('syncAll', () => {
     const expected = new Date('2026-07-19T08:30:00.000Z').getTime()
     expect(local?.createdAt).toBe(expected)
     expect(local?.updatedAt).toBe(expected)
+  })
+
+  it('round-trips category deleted_at through push and pull', async () => {
+    await db.categories.add({
+      id: 'c-del', name: 'Old', color: '#000000', type: 'expense',
+      isDefault: false, updatedAt: 5, deletedAt: 5,
+    })
+    pullData['categories'] = [{
+      id: 'c-remote', name: 'Remote', color: '#ffffff', type: 'expense',
+      is_default: false, updated_at: '2026-08-01T00:00:00Z', deleted_at: '2026-08-01T00:00:00Z',
+    }]
+
+    await syncAll()
+
+    const pushedCategories = upsertMock.mock.calls
+      .flatMap(([rows]) => rows as Record<string, unknown>[])
+      .filter((r) => r.id === 'c-del')
+    expect(pushedCategories[0].deleted_at).toBe(new Date(5).toISOString())
+
+    const pulled = await db.categories.get('c-remote')
+    expect(pulled?.deletedAt).toBe(new Date('2026-08-01T00:00:00Z').getTime())
+  })
+})
+
+describe('deleteRemoteRows', () => {
+  beforeEach(() => {
+    deleteInMock.mockClear()
+    vi.mocked(supabase.from).mockClear()
+  })
+
+  it('deletes remote rows by id', async () => {
+    await deleteRemoteRows('categories', ['a', 'b'])
+    expect(supabase.from).toHaveBeenCalledWith('categories')
+    expect(deleteInMock).toHaveBeenCalledWith('id', ['a', 'b'])
+  })
+
+  it('skips the network entirely for an empty id list', async () => {
+    await deleteRemoteRows('categories', [])
+    expect(supabase.from).not.toHaveBeenCalled()
+    expect(deleteInMock).not.toHaveBeenCalled()
   })
 })

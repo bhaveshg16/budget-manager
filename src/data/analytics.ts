@@ -1,6 +1,7 @@
 import { db } from './db'
 import { listTransactionsForMonth } from './transactions'
 import { listBudgetsForMonth } from './budgets'
+import { resolveCategoryDisplay } from './categories'
 import { yearMonths } from '../utils/date'
 
 export interface CategoryTotal {
@@ -12,15 +13,15 @@ export interface CategoryTotal {
 
 export async function getCategoryBreakdown(month: string, type: 'expense' | 'income'): Promise<CategoryTotal[]> {
   const [transactions, categories] = await Promise.all([listTransactionsForMonth(month), db.categories.toArray()])
-  const totals = new Map<string, number>()
+  const totals = new Map<string, CategoryTotal>()
   for (const t of transactions) {
     if (t.type !== type) continue
-    totals.set(t.categoryId, (totals.get(t.categoryId) ?? 0) + t.amount)
+    const display = resolveCategoryDisplay(categories, t.categoryId)
+    const row = totals.get(display.id) ?? { categoryId: display.id, categoryName: display.name, color: display.color, total: 0 }
+    row.total += t.amount
+    totals.set(display.id, row)
   }
-  return [...totals.entries()].map(([categoryId, total]) => {
-    const category = categories.find((c) => c.id === categoryId)
-    return { categoryId, categoryName: category?.name ?? 'Unknown', color: category?.color ?? '#94a3b8', total }
-  })
+  return [...totals.values()]
 }
 
 export interface MonthlyTotal {
@@ -54,37 +55,35 @@ export async function getBudgetVsActual(month: string): Promise<BudgetVsActual[]
   const [budgets, categories, breakdown] = await Promise.all([
     listBudgetsForMonth(month), db.categories.toArray(), getCategoryBreakdown(month, 'expense'),
   ])
-  return budgets.map((b) => {
+  return budgets.flatMap((b) => {
     const category = categories.find((c) => c.id === b.categoryId)
+    if (!category || category.deletedAt) return []
     const spent = breakdown.find((row) => row.categoryId === b.categoryId)?.total ?? 0
     return {
-      categoryId: b.categoryId, categoryName: category?.name ?? 'Unknown',
+      categoryId: b.categoryId, categoryName: category.name,
       limitAmount: b.limitAmount, spent, remaining: b.limitAmount - spent,
     }
   })
 }
 
-export interface MonthComparisonRow {
+export interface ComparisonRow {
   categoryId: string
   categoryName: string
-  amountA: number
-  amountB: number
-  delta: number
+  color: string
+  amounts: Record<string, number> // month (YYYY-MM) -> expense total; months with no spending are absent
 }
 
-export async function getMonthComparison(monthA: string, monthB: string): Promise<MonthComparisonRow[]> {
-  const [breakdownA, breakdownB, categories] = await Promise.all([
-    getCategoryBreakdown(monthA, 'expense'), getCategoryBreakdown(monthB, 'expense'), db.categories.toArray(),
-  ])
-  const categoryIds = new Set([...breakdownA.map((r) => r.categoryId), ...breakdownB.map((r) => r.categoryId)])
-  return [...categoryIds].map((categoryId) => {
-    const amountA = breakdownA.find((r) => r.categoryId === categoryId)?.total ?? 0
-    const amountB = breakdownB.find((r) => r.categoryId === categoryId)?.total ?? 0
-    return {
-      categoryId, categoryName: categories.find((c) => c.id === categoryId)?.name ?? 'Unknown',
-      amountA, amountB, delta: amountB - amountA,
+export async function getCategoryComparison(months: string[]): Promise<ComparisonRow[]> {
+  const rows = new Map<string, ComparisonRow>()
+  for (const month of months) {
+    for (const item of await getCategoryBreakdown(month, 'expense')) {
+      const row = rows.get(item.categoryId) ??
+        { categoryId: item.categoryId, categoryName: item.categoryName, color: item.color, amounts: {} }
+      row.amounts[month] = item.total
+      rows.set(item.categoryId, row)
     }
-  })
+  }
+  return [...rows.values()].sort((a, b) => a.categoryName.localeCompare(b.categoryName))
 }
 
 export async function spendByDayForMonth(month: string): Promise<Map<string, number>> {

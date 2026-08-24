@@ -9,6 +9,7 @@ export interface Category {
   color: string
   type: TransactionType
   isDefault: boolean
+  deletedAt?: number
   updatedAt: number
 }
 

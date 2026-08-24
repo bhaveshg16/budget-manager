@@ -41,7 +41,9 @@ export function AddEditEntryScreen() {
     }
   }, [existing, loaded])
 
-  const filteredCategories = categories?.filter((c) => c.type === type) ?? []
+  // Deleted categories are hidden from the picker, except the one the transaction being edited
+  // already uses — otherwise opening an old entry would silently re-categorize it on save.
+  const filteredCategories = categories?.filter((c) => c.type === type && (!c.deletedAt || c.id === categoryId)) ?? []
   const effectiveCategoryId = filteredCategories.some((c) => c.id === categoryId)
     ? categoryId
     : (filteredCategories[0]?.id ?? '')

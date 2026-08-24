@@ -15,12 +15,16 @@ const DEFAULT_CATEGORIES: Array<Omit<Category, 'id' | 'updatedAt'>> = [
   { name: 'Other Income', color: '#0ea5e9', type: 'income', isDefault: true },
 ]
 
-export async function seedDefaultCategoriesIfEmpty(): Promise<void> {
+const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+export async function seedDefaultCategoriesIfEmpty(userId: string): Promise<void> {
   await db.transaction('rw', db.categories, async () => {
     const count = await db.categories.count()
     if (count > 0) return
     const now = Date.now()
-    await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((c) => ({ ...c, id: makeId(), updatedAt: now })))
+    await db.categories.bulkAdd(
+      DEFAULT_CATEGORIES.map((c) => ({ ...c, id: `def-${slugify(c.name)}-${userId}`, updatedAt: now }))
+    )
   })
 }
 
@@ -38,6 +42,24 @@ export async function updateCategory(id: string, changes: Partial<Pick<Category,
   await db.categories.update(id, { ...changes, updatedAt: Date.now() })
 }
 
+export const UNCATEGORIZED = { id: 'uncategorized', name: 'Uncategorized', color: '#94a3b8' } as const
+
+export function resolveCategoryDisplay(
+  categories: Category[], id: string
+): { id: string; name: string; color: string } {
+  const category = categories.find((c) => c.id === id)
+  if (!category || category.deletedAt) return UNCATEGORIZED
+  return { id: category.id, name: category.name, color: category.color }
+}
+
+export async function listActiveCategories(): Promise<Category[]> {
+  return (await db.categories.toArray()).filter((c) => !c.deletedAt)
+}
+
 export async function deleteCategory(id: string): Promise<void> {
-  await db.categories.delete(id)
+  const now = Date.now()
+  await db.transaction('rw', db.categories, db.recurringRules, async () => {
+    await db.categories.update(id, { deletedAt: now, updatedAt: now })
+    await db.recurringRules.where('categoryId').equals(id).modify({ isActive: false, updatedAt: now })
+  })
 }

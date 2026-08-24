@@ -16,6 +16,12 @@ async function pushRows(tableName: string, rows: Record<string, unknown>[], user
   if (error) throw error
 }
 
+export async function deleteRemoteRows(tableName: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from(tableName).delete().in('id', ids)
+  if (error) throw error
+}
+
 async function pullRows<Local>(
   tableName: string,
   since: number,
@@ -32,11 +38,15 @@ async function pullRows<Local>(
 // --- Table-specific row mapping (camelCase local <-> snake_case remote) ---
 
 const categoryToRemote = (c: Category) => ({
-  id: c.id, name: c.name, color: c.color, type: c.type, is_default: c.isDefault, updated_at: new Date(c.updatedAt).toISOString(),
+  id: c.id, name: c.name, color: c.color, type: c.type, is_default: c.isDefault,
+  deleted_at: c.deletedAt ? new Date(c.deletedAt).toISOString() : null,
+  updated_at: new Date(c.updatedAt).toISOString(),
 })
 const categoryToLocal = (r: Record<string, unknown>): Category => ({
   id: r.id as string, name: r.name as string, color: r.color as string, type: r.type as Category['type'],
-  isDefault: r.is_default as boolean, updatedAt: new Date(r.updated_at as string).getTime(),
+  isDefault: r.is_default as boolean,
+  deletedAt: r.deleted_at ? new Date(r.deleted_at as string).getTime() : undefined,
+  updatedAt: new Date(r.updated_at as string).getTime(),
 })
 
 const transactionToRemote = (t: Transaction) => ({
