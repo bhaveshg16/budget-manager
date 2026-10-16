@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { CalendarScreen } from './CalendarScreen'
 import { db } from '../data/db'
 import { createTransaction } from '../data/transactions'
+import { createCategory } from '../data/categories'
 import { currentMonthString } from '../utils/date'
 
 function renderCalendar() {
@@ -72,5 +73,32 @@ describe('CalendarScreen year view', () => {
     expect(screen.getByTestId('month-12')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('month-03'))
     await waitFor(() => expect(screen.getByTestId('calendar-title')).toBeInTheDocument())
+  })
+})
+
+describe('CalendarScreen category filter', () => {
+  beforeEach(async () => {
+    await db.transactions.clear()
+    await db.categories.clear()
+  })
+
+  it('shows only the chosen category spend in month and year view', async () => {
+    const month = currentMonthString()
+    const food = await createCategory({ name: 'Food', color: '#f59e0b', type: 'expense' })
+    const rent = await createCategory({ name: 'Rent', color: '#ef4444', type: 'expense' })
+    await createTransaction({ type: 'expense', categoryId: food.id, amount: 300, description: '', date: `${month}-10`, time: '10:00' })
+    await createTransaction({ type: 'expense', categoryId: rent.id, amount: 9000, description: '', date: `${month}-01`, time: '10:00' })
+    renderCalendar()
+
+    expect(await screen.findByText('Spent ₹9300')).toBeInTheDocument()
+    await userEvent.selectOptions(await screen.findByLabelText(/category filter/i), food.id)
+    expect(await screen.findByText('Spent ₹300')).toBeInTheDocument()
+    expect(screen.getByTestId(`day-${month}-01`)).toHaveClass('bg-transparent')
+    expect(screen.getByTestId(`day-${month}-10`)).toHaveClass('bg-heat-5')
+
+    await userEvent.click(screen.getByTestId('calendar-title'))
+    await waitFor(() => expect(screen.getByTestId('year-title')).toBeInTheDocument())
+    expect(screen.getByText('Spent ₹300')).toBeInTheDocument()
+    expect(screen.getByLabelText(/category filter/i)).toHaveValue(food.id)
   })
 })

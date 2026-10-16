@@ -128,6 +128,15 @@ describe('calendar aggregations', () => {
     expect(map.has('2026-01')).toBe(false)
   })
 
+  it('spendByDayForMonth and spendByMonthForYear can be limited to one category', async () => {
+    await createTransaction({ type: 'expense', categoryId: 'food', amount: 100, description: '', date: '2026-07-09', time: '10:00' })
+    await createTransaction({ type: 'expense', categoryId: 'rent', amount: 900, description: '', date: '2026-07-09', time: '11:00' })
+
+    expect((await spendByDayForMonth('2026-07', 'food')).get('2026-07-09')).toBe(100)
+    expect((await spendByMonthForYear(2026, 'food')).get('2026-07')).toBe(100)
+    expect((await spendByDayForMonth('2026-07')).get('2026-07-09')).toBe(1000)
+  })
+
   it('listTransactionsForDate returns only that date', async () => {
     await createTransaction({ type: 'expense', categoryId: 'c1', amount: 10, description: '', date: '2026-07-09', time: '10:00' })
     await createTransaction({ type: 'expense', categoryId: 'c1', amount: 20, description: '', date: '2026-07-10', time: '10:00' })

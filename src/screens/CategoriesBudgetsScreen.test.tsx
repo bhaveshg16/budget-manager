@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../data/db'
 import { createCategory } from '../data/categories'
 import { setBudgetLimit } from '../data/budgets'
+import { createRecurringRule } from '../data/recurring'
 import { currentMonthString } from '../utils/date'
 import { CategoriesBudgetsScreen } from './CategoriesBudgetsScreen'
 
@@ -11,6 +12,7 @@ describe('CategoriesBudgetsScreen', () => {
   beforeEach(async () => {
     await db.categories.clear()
     await db.budgets.clear()
+    await db.recurringRules.clear()
   })
 
   afterEach(() => {
@@ -82,5 +84,40 @@ describe('CategoriesBudgetsScreen', () => {
     await userEvent.type(nameInput, 'Eating out')
     await userEvent.tab()
     await waitFor(async () => expect((await db.categories.get('c1'))?.name).toBe('Eating out'))
+  })
+
+  it('lists active recurring entries and stops one after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const rent = await createCategory({ name: 'Rent', color: '#ef4444', type: 'expense' })
+    const rule = await createRecurringRule({
+      categoryId: rent.id, amount: 15000, description: 'Flat rent', type: 'expense',
+      frequency: 'monthly', dayOfMonth: 5, startDate: '2026-01-05',
+    })
+    render(<CategoriesBudgetsScreen />)
+
+    expect(await screen.findByText('Flat rent')).toBeInTheDocument()
+    expect(screen.getByText(/monthly on day 5/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /stop flat rent/i }))
+
+    await waitFor(async () => expect((await db.recurringRules.get(rule.id))?.isActive).toBe(false))
+    await waitFor(() => expect(screen.queryByText('Flat rent')).not.toBeInTheDocument())
+  })
+
+  it('keeps a recurring entry when stopping is not confirmed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const rule = await createRecurringRule({
+      categoryId: 'c1', amount: 99, description: 'Gym', type: 'expense',
+      frequency: 'weekly', dayOfWeek: 1, startDate: '2026-01-05',
+    })
+    render(<CategoriesBudgetsScreen />)
+
+    expect(await screen.findByText(/weekly on mon/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /stop gym/i }))
+    expect((await db.recurringRules.get(rule.id))?.isActive).toBe(true)
+  })
+
+  it('shows an empty state when nothing is recurring', async () => {
+    render(<CategoriesBudgetsScreen />)
+    expect(await screen.findByText(/no recurring entries/i)).toBeInTheDocument()
   })
 })

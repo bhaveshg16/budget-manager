@@ -1,20 +1,30 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
-import type { TransactionType } from '../data/db'
-import { createCategory, updateCategory, deleteCategory } from '../data/categories'
+import type { TransactionType, RecurringRule } from '../data/db'
+import { createCategory, updateCategory, deleteCategory, resolveCategoryDisplay } from '../data/categories'
+import { listActiveRecurringRules, deactivateRecurringRule } from '../data/recurring'
 import { setBudgetLimit } from '../data/budgets'
 import { currentMonthString } from '../utils/date'
+
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function scheduleLabel(rule: RecurringRule): string {
+  return rule.frequency === 'monthly'
+    ? `Monthly on day ${rule.dayOfMonth ?? 1}`
+    : `Weekly on ${WEEKDAY_NAMES[rule.dayOfWeek ?? 0]}`
+}
 
 export function CategoriesBudgetsScreen() {
   const month = currentMonthString()
   const categories = useLiveQuery(() => db.categories.toArray(), [])
   const budgets = useLiveQuery(() => db.budgets.where('month').equals(month).toArray(), [month])
+  const recurringRules = useLiveQuery(() => listActiveRecurringRules(), [])
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#3b82f6')
   const [newType, setNewType] = useState<TransactionType>('expense')
 
-  if (!categories || !budgets) return null
+  if (!categories || !budgets || !recurringRules) return null
 
   const active = categories.filter((c) => !c.deletedAt)
   const expenseCategories = active.filter((c) => c.type === 'expense')
@@ -119,6 +129,37 @@ export function CategoriesBudgetsScreen() {
             />
           </div>
         ))}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Recurring</h2>
+        {recurringRules.map((rule) => {
+          const label = rule.description || resolveCategoryDisplay(categories, rule.categoryId).name
+          return (
+            <div key={rule.id} className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate">{label}</p>
+                <p className="text-xs text-muted">{scheduleLabel(rule)}</p>
+              </div>
+              <span className={rule.type === 'expense' ? 'text-red-500' : 'text-accent'}>
+                {rule.type === 'expense' ? '-' : '+'}₹{rule.amount.toFixed(0)}
+              </span>
+              <button
+                type="button"
+                aria-label={`Stop ${label}`}
+                onClick={() => {
+                  if (window.confirm(`Stop ${label} from recurring? Entries already added stay.`)) {
+                    deactivateRecurringRule(rule.id)
+                  }
+                }}
+                className="rounded-lg border border-border px-2 py-1 text-sm text-muted"
+              >
+                Stop
+              </button>
+            </div>
+          )
+        })}
+        {recurringRules.length === 0 && <p className="text-sm text-muted">No recurring entries</p>}
       </section>
     </div>
   )
