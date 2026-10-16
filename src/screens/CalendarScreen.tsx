@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { spendByDayForMonth, spendByMonthForYear } from '../data/analytics'
+import { listActiveCategories } from '../data/categories'
 import { monthGridDays, monthLabel, addMonths, dayOfMonth, currentMonthString, yearMonths } from '../utils/date'
 import { heatLevel } from '../utils/heat'
 import { DaySheet } from '../components/DaySheet'
@@ -12,9 +13,21 @@ export function CalendarScreen() {
   const [month, setMonth] = useState(currentMonthString())
   const [view, setView] = useState<'month' | 'year'>('month')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState('')
   const year = Number(month.slice(0, 4))
-  const dayTotals = useLiveQuery(() => spendByDayForMonth(month), [month])
-  const monthTotals = useLiveQuery(() => spendByMonthForYear(year), [year])
+  const dayTotals = useLiveQuery(() => spendByDayForMonth(month, categoryId || undefined), [month, categoryId])
+  const monthTotals = useLiveQuery(() => spendByMonthForYear(year, categoryId || undefined), [year, categoryId])
+  const categories = useLiveQuery(() => listActiveCategories(), [])
+
+  const categoryFilter = (
+    <select aria-label="Category filter" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
+      className="self-center rounded-lg border border-border bg-surface p-2 text-sm">
+      <option value="">All categories</option>
+      {categories?.filter((c) => c.type === 'expense').map((c) => (
+        <option key={c.id} value={c.id}>{c.name}</option>
+      ))}
+    </select>
+  )
 
   if (view === 'year') {
     if (!monthTotals) return null
@@ -33,6 +46,7 @@ export function CalendarScreen() {
           <button aria-label="Next year" onClick={() => setMonth(addMonths(month, 12))}
             className="rounded-lg px-3 py-1 text-muted">›</button>
         </header>
+        {categoryFilter}
         <div className="grid grid-cols-3 gap-2">
           {months.map((m) => {
             const spent = monthTotals.get(m) ?? 0
@@ -71,6 +85,7 @@ export function CalendarScreen() {
         <button aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))}
           className="rounded-lg px-3 py-1 text-muted">›</button>
       </header>
+      {categoryFilter}
 
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted">
         {WEEKDAYS.map((d, i) => <div key={i}>{d}</div>)}
